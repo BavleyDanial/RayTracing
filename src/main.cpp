@@ -33,17 +33,30 @@ void DrawPixel(Image& image, int pixelPos, const glm::vec3& color) {
 class ImagePNG {
 public:
     ImagePNG(const Image& image)
-        :image(image) {}
+        :mImage(image) {}
 
     void SaveImage(std::string_view file) {
         std::string fileName(file);
         std::ofstream out_file(fileName);
         out_file.close();
-        stbi_write_png(file.data(), image.width, image.height, image.comps, image.pixels.data(), image.width*image.comps);
+
+        stbi_flip_vertically_on_write(mFlipV);
+        stbi_write_png(file.data(), mImage.width, mImage.height, mImage.comps, mImage.pixels.data(), mImage.width*mImage.comps);
+    }
+
+    void FlipVertical(bool enabled) {
+        mFlipV = enabled;
     }
 
 private:
-    Image image;
+    Image mImage;
+    bool mFlipV = false;
+};
+
+struct Ray {
+    glm::vec3 org;
+    glm::vec3 dir;
+    float t;
 };
 
 int main() {
@@ -52,17 +65,21 @@ int main() {
     std::ios_base::sync_with_stdio(false);
     for (int y = 0; y < image.height; y++) {
         for (int x = 0; x < image.width; x++) {
-            std::clog << "\rProgress: " << std::ceil(((float)y / image.height) * 100) << '%';
-            float r = 255.999f * (float(x) / (image.width-1));
-            float g = 255.999f * (float(y) / (image.height-1));
-            auto b = 0.0;
-            int pixelPos = image.comps * (y * image.width + x);
-            DrawPixel(image, pixelPos, {r, g, b, 255});
+            std::clog << "\rProgress: " << std::round(((float)y / image.height) * 100) << '%';
+            glm::vec2 fragPos = { (float)x / (image.width - 1), (float)y / (image.height - 1) };
+
+            float r = 255 * fragPos.x;
+            float g = 255 * fragPos.y;
+            float b = 0;
+
+            int pixelIdx = image.comps * (y * image.width + x);
+            DrawPixel(image, pixelIdx, {r, g, b, 255});
             std::clog << std::flush;
         }
     }
 
     ImagePNG png(image);
+    png.FlipVertical(true);
     png.SaveImage("result.png");
 
     return 0;
