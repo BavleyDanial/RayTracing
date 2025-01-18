@@ -18,10 +18,8 @@ struct Ray {
 };
 
 // TODO: when a ray misses, try using an environment map (cube map) instead of computing colors
-glm::vec3 RayMiss(const Ray& ray) {
-    glm::vec3 unitDir = glm::normalize(ray.dir);
-    float a = 0.5f * (unitDir.y + 1.0f);
-    return (1.0f - a) * glm::vec3(255.0f, 255.0f, 255.0f) + a * glm::vec3(238.0f, 175.0f, 97.0f);
+glm::vec3 RayMiss() {
+    return glm::vec3(0.0f);
 }
 
 /*
@@ -51,7 +49,7 @@ glm::vec3 TraceRay(const Ray& ray) {
 
     // (-b +- sqrt(b^2 - 4ac))/2a
     if (discriminant < 0) {
-        return RayMiss(ray);
+        return RayMiss();
     }
 
     float t0 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
@@ -95,7 +93,7 @@ int main() {
         return -1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Ray Tracer", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "ImGui Docking Example", NULL, NULL);
     if (!window) {
         LOG("Failed to create GLFW window\n");
         glfwTerminate();
@@ -107,13 +105,14 @@ int main() {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
-
-    // Allocate buffer for the image
-    RT::Image image(1920, 1080, 4);
 
     GLuint texture;
     glGenTextures(1, &texture);
@@ -121,29 +120,37 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Main loop
+    float deltaTime = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
-        // Render the ray-traced image to the buffer
-        Render(image);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
-        ImGui::Begin("Ray Tracer Output");
-        ImGui::Text("Rendered Image:");
+        ImGui::Begin("RayTracing Viewport");
+        RT::Image image(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y, 4);
+        
+        float startTime = glfwGetTime();
+        Render(image);
+        float endTime = glfwGetTime();
+        deltaTime = (endTime - startTime) * 1000;
+        
         ImGui::Image(texture, ImVec2(image.width, image.height), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::End();
+        
+        ImGui::Begin("RayTracing Options");
+        ImGui::Text("DeltaTime: %f", deltaTime);
         ImGui::End();
 
         ImGui::Render();
-        glViewport(0, 0, image.width, image.height);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
+        glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
+        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
 
