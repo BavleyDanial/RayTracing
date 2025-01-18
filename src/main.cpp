@@ -3,9 +3,14 @@
 #include <Image.h>
 #include <ImageFile.h>
 
+#include <imgui.h>
+#include <GLFW/glfw3.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
 #include <glm/glm.hpp>
 
-#define LOG(x, ...) printf(x, __VA_ARGS__) // Temporary, maybe I'll create a logging library for performance measurements
+#define LOG(x, ...) printf(x, ##__VA_ARGS__) // Temporary, maybe I'll create a logging library for performance measurements
 
 struct Ray {
     glm::vec3 org;
@@ -62,15 +67,12 @@ glm::vec3 TraceRay(const Ray& ray) {
     return lightIntensity * cosTerm * glm::vec3(0, 0, 255);
 }
 
-int main() {
-    RT::Image image(1920, 1080, 4);
+void Render(RT::Image& image) {
     glm::vec2 viewport(2*image.aspectRatio, 2.0f);
     glm::vec3 cameraPos(0, 0, 1);
 
     for (int y = 0; y < image.height; y++) {
         for (int x = 0; x < image.width; x++) {
-            LOG("\rProgress: %i%%", (int)std::round(((float)y / image.height) * 100));
-
             glm::vec2 fragPos = { (float)x / (image.width - 1), (float)y / (image.height - 1) };
             fragPos = fragPos * 2.0f - 1.0f;
             fragPos *= viewport;
@@ -85,10 +87,72 @@ int main() {
             DrawPixel(image, pixelIdx, {pixelColor, 255});
         }
     }
+}
 
-    RT::ImagePNG png(image);
-    png.FlipVertical(true);
-    png.Save("result.png");
+int main() {
+    if (!glfwInit()) {
+        LOG("Failed to initialize GLFW\n");
+        return -1;
+    }
+
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Ray Tracer", NULL, NULL);
+    if (!window) {
+        LOG("Failed to create GLFW window\n");
+        glfwTerminate();
+        return -1;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 130");
+
+    // Allocate buffer for the image
+    RT::Image image(1920, 1080, 4);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Main loop
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        // Render the ray-traced image to the buffer
+        Render(image);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Ray Tracer Output");
+        ImGui::Text("Rendered Image:");
+        ImGui::Image(texture, ImVec2(image.width, image.height), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::End();
+
+        ImGui::Render();
+        glViewport(0, 0, image.width, image.height);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
     return 0;
 }

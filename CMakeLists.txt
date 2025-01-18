@@ -27,11 +27,21 @@ set(HEADER "${CMAKE_SOURCE_DIR}/header/")
 
 set(GLM_HEADER "${CMAKE_SOURCE_DIR}/vendor/glm/")
 set(STB_HEADER "${CMAKE_SOURCE_DIR}/vendor/stb/")
+set(GLFW_HEADER "${CMAKE_SOURCE_DIR}/vendor/glfw/include/")
+set(IMGUI_HEADER "${CMAKE_SOURCE_DIR}/vendor/imgui/")
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/glfw/")
+add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/imgui/")
+find_package( OpenGL REQUIRED )
 
 set(BIN_NAME "RayTracing-${CMAKE_SYSTEM_NAME}-${ARCHITECTURE}")
 add_executable(${BIN_NAME} "${SOURCE}" "${GLAD_SRC}" "${HEADER_SOURCE}")
 
-target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLM_HEADER}" "${STB_HEADER}")
+target_link_libraries(${BIN_NAME} glfw)
+target_link_libraries(${BIN_NAME} OpenGL::GL)
+target_link_libraries(${BIN_NAME} imgui)
+
+target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLM_HEADER}" "${STB_HEADER}" "${GLFW_HEADER}" "${IMGUI_HEADER}")
 set_target_properties(${BIN_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${OutputDir}"
 )
