@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 
-namespace RT {
+namespace Core {
 
     struct Image {
         std::vector<uint8_t> pixels = {0};

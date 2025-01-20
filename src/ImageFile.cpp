@@ -4,7 +4,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stbi/stb_image_write.h>
 
-namespace RT {
+namespace Core {
 
     ImagePNG::ImagePNG(const Image& image) {
         mImage = std::make_unique<Image>(image.width, image.height, image.comps);

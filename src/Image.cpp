@@ -1,6 +1,6 @@
 #include <Image.h>
 
-namespace RT {
+namespace Core {
 
     void DrawPixel(Image& image, int pixelPos, const glm::vec4& color) {
         uint8_t r = static_cast<uint8_t>(color.r);

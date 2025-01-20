@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace RT {
+namespace Core {
 
     class ImagePNG {
     public:
