@@ -6,8 +6,8 @@
 namespace Core {
 
     struct DirectionalLight {
-        glm::vec3 direction{0};
-        glm::vec3 color{0};
+        glm::vec3 direction{-1};
+        glm::vec3 color{255};
         float intensity = 1.0f;
     };
     
@@ -29,7 +29,8 @@ namespace Core {
         // Indices to other structs
         int materialIndex = 0;
     };
-    
+
+    // TODO: Possibly create memory arenas to help performance of retrieving 
     struct Scene {
         std::vector<DirectionalLight> directionalLights;
         std::vector<PointLight> pointLights;

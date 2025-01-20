@@ -48,10 +48,18 @@ int main() {
 
     Core::Scene scene;
     scene.materials.push_back({glm::vec3(0.0f, 0.0f, 255.0f)});
-    scene.materials.push_back({glm::vec3(255.0f, 0.0f, 0.0f)});
     scene.directionalLights.push_back({ glm::vec3(-1.0f), glm::vec3(255.0f), 1.0f });
-    scene.spheres.push_back({});
-    //scene.spheres.push_back({{-1, 0, 0}, 0.5, 1});
+
+    {
+        Core::Sphere sphere;
+        scene.spheres.push_back(sphere);
+    }
+    {
+        Core::Sphere sphere;
+        sphere.position = {-1.0f, 0.0f, 0.0f };
+        scene.spheres.push_back(sphere);
+    }
+    
     Core::Camera camera(glm::vec3(0, 0, 1), glm::vec2(0));
     RT::Renderer renderer(scene);
     while (!glfwWindowShouldClose(window)) {

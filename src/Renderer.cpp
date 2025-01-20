@@ -41,13 +41,13 @@ namespace RT {
     */
     glm::vec3 Renderer::TraceRay(const Ray& ray) {
         // TODO: Make it support multiple kinds of objects other than spheres
-        Core::Sphere closestSphere;
+        Core::Sphere* closestSphere = nullptr;
         float tmin = FLT_MAX;
-        for (const auto& sphere : mScene.spheres) {
-            glm::vec3 co = ray.org - sphere.position; // if the camera is moved somewhere offset the rendering as if the circle is at the origin of the camera
+        for (auto& sphere : mScene.spheres) {
+            glm::vec3 origin = ray.org - sphere.position; // if the camera is moved somewhere offset the rendering as if the circle is at the origin of the camera
             float a = glm::dot(ray.dir, ray.dir);
-            float b = 2.0f * glm::dot(co, ray.dir);
-            float c = glm::dot(co, co) - sphere.radius*sphere.radius;
+            float b = 2.0f * glm::dot(origin, ray.dir);
+            float c = glm::dot(origin, origin) - sphere.radius*sphere.radius;
             float discriminant = b*b - 4*a*c;
 
             // (-b +- sqrt(b^2 - 4ac))/2a
@@ -58,23 +58,23 @@ namespace RT {
             float t0 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
             //float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
             if (t0 < tmin) {
-                closestSphere = sphere;
+                closestSphere = &sphere;
                 tmin = t0;
             }
         }
 
-        if (tmin == FLT_MAX) {
+        if (!closestSphere) {
             return RayMiss();
         }
 
-        glm::vec3 hit0 = ray.org + tmin * ray.dir;
+        glm::vec3 hit0 = (ray.org - closestSphere->position) + tmin * ray.dir;
         //glm::vec3 hit1 = ray.org + t1 * ray.dir;
         glm::vec3 hitNorm = glm::normalize(hit0);
         
         // Diffuse Lighting
         // TODO: Make it support multiple lights and different colored lights
         float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
-        return mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere.materialIndex].albedo;
+        return mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere->materialIndex].albedo;
     }
 
     glm::vec3 Renderer::RayMiss() {
