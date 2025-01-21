@@ -5,7 +5,7 @@ namespace Core {
         :mPosition(position), mViewport(viewport),
             mFOV(fov), mNearClip(nearClip), mFarClip(farClip),
             mAspectRatio(viewport.x/viewport.y) {
-        
+
         mProjectionMatrix = glm::perspective(mFOV, mAspectRatio, mNearClip, mFarClip);
         mViewMatrix = glm::lookAt(mPosition, glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
         mRayDirections.reserve(viewport.x * viewport.y);
@@ -15,17 +15,17 @@ namespace Core {
         if (mViewport.x == viewport.x && mViewport.y == viewport.y) {
             return;
         }
-        
+
         mViewport = viewport;
         mAspectRatio = viewport.x/viewport.y;
-        
+
         mProjectionMatrix = glm::perspective(mFOV, mAspectRatio, mNearClip, mFarClip);
         mInverseProjectionMatrix = glm::inverse(mProjectionMatrix);
 
         mRayDirections.reserve(viewport.x * viewport.y);
         CalculateRayDirections();
     }
-    
+
     void Camera::SetPosition(const glm::vec3& position) {
         mPosition = position;
         mViewMatrix = glm::lookAt(mPosition, glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
@@ -43,4 +43,5 @@ namespace Core {
             }
         }
     }
+
 }

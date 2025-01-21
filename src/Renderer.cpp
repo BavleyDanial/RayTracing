@@ -1,10 +1,7 @@
-#include "Renderer.h"
-
-#include <iostream>
-#include <ostream>
+#include <Renderer.h>
 
 namespace RT {
-    
+
     Renderer::Renderer(const Core::Scene& scene)
         : mScene(scene) {}
 
@@ -53,7 +50,7 @@ namespace RT {
 
             float t0 = (-b - glm::sqrt(discriminant)) / (2.0f * a);
             //float t1 = (-b + glm::sqrt(discriminant)) / (2.0f * a);
-            if (t0 < tmin) {
+            if (t0 < tmin && t0 >= 0) {
                 closestSphere = &sphere;
                 tmin = t0;
             }
@@ -66,7 +63,7 @@ namespace RT {
         glm::vec3 hit0 = (ray.org - closestSphere->position) + tmin * ray.dir;
         //glm::vec3 hit1 = ray.org + t1 * ray.dir;
         glm::vec3 hitNorm = glm::normalize(hit0);
-        
+
         // Diffuse Lighting
         // TODO: Make it support multiple lights and different colored lights
         float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
@@ -76,5 +73,5 @@ namespace RT {
     glm::vec3 Renderer::RayMiss() {
         return glm::vec3(0);
     }
-    
+
 }

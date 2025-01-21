@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <string>
 #include <memory>
 
 #include <Renderer.h>
@@ -6,9 +6,6 @@
 #include <Image.h>
 
 #include <imgui.h>
-#include <iostream>
-#include <ostream>
-#include <string>
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -24,7 +21,7 @@ int main() {
         return -1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "ImGui Docking Example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "RayTracing", NULL, NULL);
     if (!window) {
         LOG("Failed to create GLFW window\n");
         glfwTerminate();
@@ -96,18 +93,20 @@ int main() {
         renderer.Render(camera, image.get());
         float endTime = glfwGetTime();
         float deltaTime = (endTime - startTime) * 1000;
-        
+
         ImGui::Image(texture, ImVec2(image->width, image->height), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
-        
+
         ImGui::Begin("RayTracing Options");
         ImGui::Text("DeltaTime: %f", deltaTime);
+        ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
+        ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
         ImGui::End();
-        
+
         ImGui::Begin("Scene");
         if (ImGui::CollapsingHeader("Spheres")) {
             for (size_t i = 0; i < scene.spheres.size(); i++) {
-                ImGui::PushID(std::string("Sphere" + i).c_str());
+                ImGui::PushID(("Sphere" + std::to_string(i)).c_str());
                 ImGui::DragFloat3("Position", glm::value_ptr(scene.spheres[i].position), 0.1f);
                 ImGui::DragFloat("Scale", &scene.spheres[i].radius, 0.1f);
                 ImGui::InputInt("Material ID", &scene.spheres[i].materialIndex);
@@ -129,7 +128,7 @@ int main() {
 
         if (ImGui::CollapsingHeader("Materials")) {
             for (size_t i = 0; i < scene.materials.size(); i++) {
-                ImGui::PushID(std::string("Material" + i).c_str());
+                ImGui::PushID(("Material" + std::to_string(i)).c_str());
                 ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
                 if (ImGui::Button("Remove")) {
                     scene.materials.erase(scene.materials.begin() + i);

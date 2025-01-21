@@ -12,7 +12,7 @@ namespace RT {
         glm::vec3 org;
         glm::vec3 dir;
     };
-    
+
     class Renderer {
     public:
         Renderer(const Core::Scene& scene);
@@ -23,6 +23,6 @@ namespace RT {
     private:
         const Core::Scene& mScene;
     };
-    
+
 }
 

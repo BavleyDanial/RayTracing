@@ -10,7 +10,7 @@ namespace Core {
         glm::vec3 color{1.0f};
         float intensity = 1.0f;
     };
-    
+
     struct PointLight {
         glm::vec3 Position{0};
         glm::vec3 color{0};
@@ -37,6 +37,6 @@ namespace Core {
         std::vector<Material> materials;    // First material is always pink so that any object that doesn't have a material has a default value
         std::vector<Sphere> spheres;
     };
-    
+
 }
 
