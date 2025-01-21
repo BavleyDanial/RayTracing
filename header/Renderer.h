@@ -16,12 +16,12 @@ namespace RT {
     class Renderer {
     public:
         Renderer(const Core::Scene& scene);
-        void Render(const Core::Camera& camera, Core::Image& image);
+        void Render(const Core::Camera& camera, Core::Image* image);
     private:
         glm::vec3 TraceRay(const Ray& ray);
         glm::vec3 RayMiss();
     private:
-        Core::Scene mScene;
+        const Core::Scene& mScene;
     };
     
 }

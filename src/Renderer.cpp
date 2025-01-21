@@ -8,21 +8,17 @@ namespace RT {
     Renderer::Renderer(const Core::Scene& scene)
         : mScene(scene) {}
 
-    void Renderer::Render(const Core::Camera& camera, Core::Image& image) {
-        for (uint32_t y = 0; y < image.height; y++) {
-            for (uint32_t x = 0; x < image.width; x++) {
-                glm::vec2 fragPos = { (float)x / (image.width - 1), (float)y / (image.height - 1) };
-                fragPos = fragPos * 2.0f - 1.0f;
-                fragPos *= camera.GetViewport();
-
-                glm::vec3 rayDir = glm::vec3(fragPos.x, fragPos.y, -1.0f);
+    void Renderer::Render(const Core::Camera& camera, Core::Image* image) {
+        for (uint32_t y = 0; y < image->height; y++) {
+            for (uint32_t x = 0; x < image->width; x++) {
+                const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
 
                 glm::vec3 pixelColor = TraceRay(ray);
                 pixelColor = glm::clamp(pixelColor, glm::vec3(0), glm::vec3(255));
 
-                int pixelIdx = image.comps * (y * image.width + x);
-                DrawPixel(image, pixelIdx, {pixelColor, 255});
+                int pixelIdx = image->comps * (y * image->width + x);
+                DrawPixel(image, pixelIdx, {pixelColor, 1.0f});
             }
         }
     }
@@ -41,7 +37,7 @@ namespace RT {
     */
     glm::vec3 Renderer::TraceRay(const Ray& ray) {
         // TODO: Make it support multiple kinds of objects other than spheres
-        Core::Sphere* closestSphere = nullptr;
+        const Core::Sphere* closestSphere = nullptr;
         float tmin = FLT_MAX;
         for (auto& sphere : mScene.spheres) {
             glm::vec3 origin = ray.org - sphere.position; // if the camera is moved somewhere offset the rendering as if the circle is at the origin of the camera

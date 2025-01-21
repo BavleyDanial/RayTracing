@@ -21,8 +21,8 @@ namespace Core {
         }
     };
 
-    void DrawPixel(Image& image, int pixelPos, const glm::vec4& color);
-    void DrawPixel(Image& image, int pixelPos, const glm::vec3& color);
+    void DrawPixel(Image* image, int pixelPos, const glm::vec4& color);
+    void DrawPixel(Image* image, int pixelPos, const glm::vec3& color);
 
 }
 

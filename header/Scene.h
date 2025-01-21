@@ -7,7 +7,7 @@ namespace Core {
 
     struct DirectionalLight {
         glm::vec3 direction{-1};
-        glm::vec3 color{255};
+        glm::vec3 color{1.0f};
         float intensity = 1.0f;
     };
     
@@ -18,7 +18,7 @@ namespace Core {
     };
 
     struct Material {
-        glm::vec3 albedo{255, 0, 255};
+        glm::vec3 albedo{1.0f, 0, 1.0f};
     };
 
     struct Sphere {

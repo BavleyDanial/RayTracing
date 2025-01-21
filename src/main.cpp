@@ -1,15 +1,19 @@
-#include <dinput.h>
 #include <stdio.h>
+#include <memory>
 
 #include <Renderer.h>
+#include <Camera.h>
 #include <Image.h>
 
 #include <imgui.h>
+#include <iostream>
+#include <ostream>
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define LOG(x, ...) printf(x, ##__VA_ARGS__) // Temporary, maybe I'll create a logging library for performance measurements
 
@@ -47,8 +51,9 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     Core::Scene scene;
-    scene.materials.push_back({glm::vec3(0.0f, 0.0f, 255.0f)});
-    scene.directionalLights.push_back({ glm::vec3(-1.0f), glm::vec3(255.0f), 1.0f });
+    scene.materials.push_back({glm::vec3(0.0f, 0.0f, 1.0f)});
+    scene.materials.push_back({glm::vec3(0.0f, 1.0f, 0.0f)});
+    scene.directionalLights.push_back({ glm::vec3(-1.0f), glm::vec3(1.0f), 1.0f });
 
     {
         Core::Sphere sphere;
@@ -56,11 +61,19 @@ int main() {
     }
     {
         Core::Sphere sphere;
+        sphere.position = glm::vec3(0.0f, 1.0f, 0.0f);
+        sphere.materialIndex = 1;
+        scene.spheres.push_back(sphere);
+    }
+    {
+        Core::Sphere sphere;
         sphere.position = {-1.0f, 0.0f, 0.0f };
         scene.spheres.push_back(sphere);
     }
-    
-    Core::Camera camera(glm::vec3(0, 0, 1), glm::vec2(0));
+
+    glm::vec2 viewport(1);
+    std::unique_ptr<Core::Image> image = std::make_unique<Core::Image>(1920, 1080, 4);
+    Core::Camera camera(glm::vec3(0, 0, 3), viewport, 45.0f, 0.1f, 1000.0f);
     RT::Renderer renderer(scene);
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -71,23 +84,29 @@ int main() {
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
         ImGui::Begin("RayTracing Viewport");
-        Core::Image image(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y, 4);
-        camera.SetViewport({ 2*image.aspectRatio, 2.0f });
+        float width = ImGui::GetContentRegionAvail().x;
+        float height = ImGui::GetContentRegionAvail().y;
+        if (width != image->width || height != image->height) {
+            image.reset(new Core::Image(width, height, 4));
+            camera.OnResize({image->width, image->height});
+        }
 
         float startTime = glfwGetTime();
-        renderer.Render(camera, image);
+        renderer.Render(camera, image.get());
         float endTime = glfwGetTime();
         float deltaTime = (endTime - startTime) * 1000;
         
-        ImGui::Image(texture, ImVec2(image.width, image.height), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::Image(texture, ImVec2(image->width, image->height), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
         
         ImGui::Begin("RayTracing Options");
         ImGui::Text("DeltaTime: %f", deltaTime);
+        ImGui::ColorEdit3("Color", glm::value_ptr(scene.materials[0].albedo));
+        ImGui::DragFloat3("Position", glm::value_ptr(scene.spheres[0].position));
         ImGui::End();
 
         ImGui::Render();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.pixels.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->width, image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
         glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT);
