@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include <iostream>
 #include <ostream>
+#include <string>
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
@@ -101,8 +102,50 @@ int main() {
         
         ImGui::Begin("RayTracing Options");
         ImGui::Text("DeltaTime: %f", deltaTime);
-        ImGui::ColorEdit3("Color", glm::value_ptr(scene.materials[0].albedo));
-        ImGui::DragFloat3("Position", glm::value_ptr(scene.spheres[0].position));
+        ImGui::End();
+        
+        ImGui::Begin("Scene");
+        if (ImGui::CollapsingHeader("Spheres")) {
+            for (size_t i = 0; i < scene.spheres.size(); i++) {
+                ImGui::PushID(std::string("Sphere" + i).c_str());
+                ImGui::DragFloat3("Position", glm::value_ptr(scene.spheres[i].position), 0.1f);
+                ImGui::DragFloat("Scale", &scene.spheres[i].radius, 0.1f);
+                ImGui::InputInt("Material ID", &scene.spheres[i].materialIndex);
+                if (ImGui::Button("Remove")) {
+                    scene.spheres.erase(scene.spheres.begin() + i);
+                }
+                if (i != scene.spheres.size() - 1) {
+                    ImGui::Separator();
+                }
+                ImGui::PopID();
+            }
+            ImGui::SameLine();
+            ImGui::PushID("Sphere Add");
+            if (ImGui::Button("Add")) {
+                scene.spheres.push_back({});
+            }
+            ImGui::PopID();
+        }
+
+        if (ImGui::CollapsingHeader("Materials")) {
+            for (size_t i = 0; i < scene.materials.size(); i++) {
+                ImGui::PushID(std::string("Material" + i).c_str());
+                ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
+                if (ImGui::Button("Remove")) {
+                    scene.materials.erase(scene.materials.begin() + i);
+                }
+                if (i != scene.materials.size() - 1) {
+                    ImGui::Separator();
+                }
+                ImGui::PopID();
+            }
+            ImGui::SameLine();
+            ImGui::PushID("Material Add");
+            if (ImGui::Button("Add")) {
+                scene.materials.push_back({});
+            }
+            ImGui::PopID();
+        }
         ImGui::End();
 
         ImGui::Render();
