@@ -25,8 +25,8 @@ namespace RT {
             int objIdx = -1;
         };
     private:
-        glm::vec4 FragShader(const HitInfo& hitInfo);
-        HitInfo TraceRay(const Ray& ray);
+        glm::vec4 TraceRay(Ray& ray);
+        HitInfo RayIntersectionTest(const Ray& ray);
         HitInfo FindClosestObj(const Ray& ray);
         glm::vec4 RayMiss();
     private:

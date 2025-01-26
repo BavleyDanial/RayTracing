@@ -1,7 +1,6 @@
 #include "Scene.h"
 #include "glm/geometric.hpp"
 #include <Renderer.h>
-#include <iostream>
 
 namespace RT {
 
@@ -14,36 +13,42 @@ namespace RT {
                 const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
 
-                glm::vec4 pixelColor{0};
-                for (int i = 0; i < 2; i++) {
-                    HitInfo hitInfo = TraceRay(ray);
-
-                    if (hitInfo.hitDistance < 0) {
-                        pixelColor += RayMiss() * (1 - (i * 0.25f));
-                        break;
-                    }
-                    glm::vec4 color = FragShader(hitInfo) * (1 - (i * 0.25f));
-                    pixelColor = glm::clamp(pixelColor + color, glm::vec4(0), glm::vec4(1.0f));
-                    ray.org = hitInfo.worldPosition + 0.0001f * hitInfo.surfaceNormal;
-                    ray.dir = glm::reflect(ray.dir, hitInfo.surfaceNormal);
-                }
+                // NOTE: This will be run multiple times per pixel, then it will be averaged out to get the final color
+                glm::vec4 raySampleColor = TraceRay(ray);
 
                 int pixelIdx = image->comps * (y * image->width + x);
-                DrawPixel(image, pixelIdx, pixelColor);
+                DrawPixel(image, pixelIdx, raySampleColor);
             }
         }
     }
 
-    glm::vec4 Renderer::FragShader(const HitInfo& hitInfo) {
-        const glm::vec3& hitNorm = hitInfo.surfaceNormal;
-        const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
+    glm::vec4 Renderer::TraceRay(Ray& ray) {
+        glm::vec4 color{0};
+        for (int i = 0; i < 2; i++) {
+            HitInfo hitInfo = RayIntersectionTest(ray);
+            if (hitInfo.hitDistance < 0) {
+                color += RayMiss() * (1 - (i * 0.25f));
+                break;
+            }
 
-        // Diffuse Lighting
-        // TODO: Make it support multiple lights and different colored lights
-        float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
-        glm::vec3 diff = mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere.materialIndex].albedo;
+            const glm::vec3& hitNorm = hitInfo.surfaceNormal;
+            const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
 
-        return { diff, 1.0f };
+            // Diffuse Reflection
+            // TODO: Make it support multiple lights and different colored lights
+            // TODO: Make this diffuse reflection instead of color
+            float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
+            glm::vec4 diff = glm::vec4(mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere.materialIndex].albedo, 1.0f);
+            diff *= (1 - (i * 0.25f));
+
+            // Specular Reflection
+            ray.org = hitInfo.worldPosition + 0.0001f * hitInfo.surfaceNormal;
+            ray.dir = glm::reflect(ray.dir, hitInfo.surfaceNormal);
+
+            color = glm::clamp(color + diff, glm::vec4(0), glm::vec4(1.0f));
+        }
+
+        return color;
     }
 
     /*
@@ -58,7 +63,7 @@ namespace RT {
      *  t^2 (D.D) + 2t(O.D) + (O.O) - r^2 = 0
      *  Solve for t using quadratic formula
     */
-    Renderer::HitInfo Renderer::TraceRay(const Ray& ray) {
+    Renderer::HitInfo Renderer::RayIntersectionTest(const Ray& ray) {
         // TODO: Make it support multiple kinds of objects other than spheres
         const Core::Sphere* closestSphere = nullptr;
         float tmin = FLT_MAX;
