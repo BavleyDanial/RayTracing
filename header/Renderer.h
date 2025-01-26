@@ -18,8 +18,17 @@ namespace RT {
         Renderer(const Core::Scene& scene);
         void Render(const Core::Camera& camera, Core::Image* image);
     private:
-        glm::vec3 TraceRay(const Ray& ray);
-        glm::vec3 RayMiss();
+        struct HitInfo {
+            glm::vec3 worldPosition;
+            glm::vec3 surfaceNormal;
+            float hitDistance = -1.0f;
+            int objIdx = -1;
+        };
+    private:
+        glm::vec4 FragShader(const HitInfo& hitInfo);
+        HitInfo TraceRay(const Ray& ray);
+        HitInfo FindClosestObj(const Ray& ray);
+        glm::vec4 RayMiss();
     private:
         const Core::Scene& mScene;
     };

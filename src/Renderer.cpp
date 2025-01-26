@@ -1,4 +1,7 @@
+#include "Scene.h"
+#include "glm/geometric.hpp"
 #include <Renderer.h>
+#include <iostream>
 
 namespace RT {
 
@@ -11,13 +14,36 @@ namespace RT {
                 const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
 
-                glm::vec3 pixelColor = TraceRay(ray);
-                pixelColor = glm::clamp(pixelColor, glm::vec3(0), glm::vec3(255));
+                glm::vec4 pixelColor{0};
+                for (int i = 0; i < 2; i++) {
+                    HitInfo hitInfo = TraceRay(ray);
+
+                    if (hitInfo.hitDistance < 0) {
+                        pixelColor += RayMiss() * (1 - (i * 0.25f));
+                        break;
+                    }
+                    glm::vec4 color = FragShader(hitInfo) * (1 - (i * 0.25f));
+                    pixelColor = glm::clamp(pixelColor + color, glm::vec4(0), glm::vec4(1.0f));
+                    ray.org = hitInfo.worldPosition + 0.0001f * hitInfo.surfaceNormal;
+                    ray.dir = glm::reflect(ray.dir, hitInfo.surfaceNormal);
+                }
 
                 int pixelIdx = image->comps * (y * image->width + x);
-                DrawPixel(image, pixelIdx, {pixelColor, 1.0f});
+                DrawPixel(image, pixelIdx, pixelColor);
             }
         }
+    }
+
+    glm::vec4 Renderer::FragShader(const HitInfo& hitInfo) {
+        const glm::vec3& hitNorm = hitInfo.surfaceNormal;
+        const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
+
+        // Diffuse Lighting
+        // TODO: Make it support multiple lights and different colored lights
+        float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
+        glm::vec3 diff = mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere.materialIndex].albedo;
+
+        return { diff, 1.0f };
     }
 
     /*
@@ -32,11 +58,13 @@ namespace RT {
      *  t^2 (D.D) + 2t(O.D) + (O.O) - r^2 = 0
      *  Solve for t using quadratic formula
     */
-    glm::vec3 Renderer::TraceRay(const Ray& ray) {
+    Renderer::HitInfo Renderer::TraceRay(const Ray& ray) {
         // TODO: Make it support multiple kinds of objects other than spheres
         const Core::Sphere* closestSphere = nullptr;
         float tmin = FLT_MAX;
-        for (auto& sphere : mScene.spheres) {
+        int objIdx = -1;
+        for (int i = 0; i < mScene.spheres.size(); i++) {
+            const auto& sphere = mScene.spheres[i];
             glm::vec3 origin = ray.org - sphere.position; // if the camera is moved somewhere offset the rendering as if the circle is at the origin of the camera
             float a = glm::dot(ray.dir, ray.dir);
             float b = 2.0f * glm::dot(origin, ray.dir);
@@ -53,25 +81,24 @@ namespace RT {
             if (t0 < tmin && t0 >= 0) {
                 closestSphere = &sphere;
                 tmin = t0;
+                objIdx = i;
             }
         }
 
+        HitInfo hitInfo{};
         if (!closestSphere) {
-            return RayMiss();
+            return hitInfo;
         }
 
-        glm::vec3 hit0 = (ray.org - closestSphere->position) + tmin * ray.dir;
-        //glm::vec3 hit1 = ray.org + t1 * ray.dir;
-        glm::vec3 hitNorm = glm::normalize(hit0);
-
-        // Diffuse Lighting
-        // TODO: Make it support multiple lights and different colored lights
-        float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
-        return mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere->materialIndex].albedo;
+        hitInfo.worldPosition = ray.org + tmin * ray.dir;
+        hitInfo.surfaceNormal = glm::normalize(hitInfo.worldPosition - closestSphere->position);
+        hitInfo.hitDistance = tmin;
+        hitInfo.objIdx = objIdx;
+        return hitInfo;
     }
 
-    glm::vec3 Renderer::RayMiss() {
-        return glm::vec3(0);
+    glm::vec4 Renderer::RayMiss() {
+        return { 0.0f, 0.0f, 0.0f, 0.0f };
     }
 
 }
