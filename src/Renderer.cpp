@@ -1,54 +1,55 @@
 #include "Scene.h"
-#include "glm/geometric.hpp"
+#include "glm/ext/scalar_constants.hpp"
 #include <Renderer.h>
 
 namespace RT {
 
     Renderer::Renderer(const Core::Scene& scene)
-        : mScene(scene) {}
+        : mScene(scene), mRNG(1) {}
 
-    void Renderer::Render(const Core::Camera& camera, Core::Image* image) {
+    void Renderer::Render(const Core::Camera& camera, Core::Image* image, uint32_t frame) {
         for (uint32_t y = 0; y < image->height; y++) {
             for (uint32_t x = 0; x < image->width; x++) {
                 const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
 
-                // NOTE: This will be run multiple times per pixel, then it will be averaged out to get the final color
-                glm::vec4 raySampleColor = TraceRay(ray);
+                mRNG = x + y * image->width;
+                glm::vec3 totalColor{0};
+                for (int i = 0; i < raysPerPixel; i++) {
+                    totalColor += TraceRay(ray);
+                }
+                totalColor /= (float)raysPerPixel;
+                totalColor = glm::clamp(totalColor, glm::vec3(0.0f), glm::vec3(1.0f));
 
                 int pixelIdx = image->comps * (y * image->width + x);
-                DrawPixel(image, pixelIdx, raySampleColor);
+                DrawPixel(image, pixelIdx, {totalColor, 1});
             }
         }
     }
 
-    glm::vec4 Renderer::TraceRay(Ray& ray) {
-        glm::vec4 color{0};
-        for (int i = 0; i < 2; i++) {
+    glm::vec3 Renderer::TraceRay(Ray& ray) {
+        glm::vec3 rayColor{1};
+        glm::vec3 incomingLight{0};
+
+        for (int i = 0; i < bounceLimit; i++) {
             HitInfo hitInfo = RayIntersectionTest(ray);
-            if (hitInfo.hitDistance < 0) {
-                color += RayMiss() * (1 - (i * 0.25f));
+            if (hitInfo.objIdx < 0) {
                 break;
             }
 
             const glm::vec3& hitNorm = hitInfo.surfaceNormal;
             const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
 
-            // Diffuse Reflection
-            // TODO: Make it support multiple lights and different colored lights
-            // TODO: Make this diffuse reflection instead of color
-            float cosTerm = glm::max(glm::dot(hitNorm, -glm::normalize(mScene.directionalLights[0].direction)), 0.0f);
-            glm::vec4 diff = glm::vec4(mScene.directionalLights[0].intensity * cosTerm * mScene.materials[closestSphere.materialIndex].albedo, 1.0f);
-            diff *= (1 - (i * 0.25f));
+            ray.org = hitInfo.worldPosition + hitNorm * 0.001f;
+            ray.dir = glm::normalize(hitNorm + RandomDirection(mRNG));
 
-            // Specular Reflection
-            ray.org = hitInfo.worldPosition + 0.0001f * hitInfo.surfaceNormal;
-            ray.dir = glm::reflect(ray.dir, hitInfo.surfaceNormal);
-
-            color = glm::clamp(color + diff, glm::vec4(0), glm::vec4(1.0f));
+            Core::Material mat = mScene.materials[closestSphere.materialIndex];
+            glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
+            incomingLight += emittedLight * rayColor;
+            rayColor *= mat.albedo;
         }
 
-        return color;
+        return incomingLight;
     }
 
     /*
@@ -102,8 +103,34 @@ namespace RT {
         return hitInfo;
     }
 
-    glm::vec4 Renderer::RayMiss() {
-        return { 0.0f, 0.0f, 0.0f, 0.0f };
+    glm::vec3 Renderer::RayMiss() {
+        return { 0.0f, 0.0f, 0.0f };
+    }
+
+    float Renderer::RandomValue(uint32_t& state) {
+        state = NextRandom(state);
+        return (float)state / (float)4294967295.0; // 2^32 - 1
+
+    }
+
+    uint32_t Renderer::NextRandom(uint32_t& state) {
+        state = state * 747796405 + 2891336453;
+        uint32_t result = ((state >> ((state >> 28) + 4)) ^ state) * 277803737;
+        result = (result >> 22) ^ result;
+        return result;
+    }
+
+    float Renderer::RandomValueNormalDistribution(uint32_t& state) {
+        float theta = 2 * glm::pi<float>() * RandomValue(state);
+        float rho = glm::sqrt(-2 * glm::log(RandomValue(state)));
+        return rho * glm::cos(theta);
+    }
+
+    glm::vec3 Renderer::RandomDirection(uint32_t& state) {
+        float x = RandomValueNormalDistribution(state);
+        float y = RandomValueNormalDistribution(state);
+        float z = RandomValueNormalDistribution(state);
+        return glm::normalize(glm::vec3(x, y, z));
     }
 
 }

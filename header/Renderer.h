@@ -16,7 +16,11 @@ namespace RT {
     class Renderer {
     public:
         Renderer(const Core::Scene& scene);
-        void Render(const Core::Camera& camera, Core::Image* image);
+        void Render(const Core::Camera& camera, Core::Image* image, uint32_t frame);
+    public:
+        int bounceLimit = 1;
+        int raysPerPixel = 1;
+
     private:
         struct HitInfo {
             glm::vec3 worldPosition;
@@ -24,13 +28,21 @@ namespace RT {
             float hitDistance = -1.0f;
             int objIdx = -1;
         };
+
     private:
-        glm::vec4 TraceRay(Ray& ray);
+        glm::vec3 TraceRay(Ray& ray);
         HitInfo RayIntersectionTest(const Ray& ray);
         HitInfo FindClosestObj(const Ray& ray);
-        glm::vec4 RayMiss();
+        glm::vec3 RayMiss();
+
+        uint32_t NextRandom(uint32_t& state);
+        float RandomValue(uint32_t& state);
+        glm::vec3 RandomDirection(uint32_t& state);
+        float RandomValueNormalDistribution(uint32_t& state);
+
     private:
         const Core::Scene& mScene;
+        uint32_t mRNG;
     };
 
 }

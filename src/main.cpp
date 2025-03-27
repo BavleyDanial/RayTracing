@@ -73,6 +73,7 @@ int main() {
     std::unique_ptr<Core::Image> image = std::make_unique<Core::Image>(1920, 1080, 4);
     Core::Camera camera(glm::vec3(0, 0, 3), viewport, 45.0f, 0.1f, 1000.0f);
     RT::Renderer renderer(scene);
+    uint32_t frame = 1;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -90,7 +91,7 @@ int main() {
         }
 
         float startTime = glfwGetTime();
-        renderer.Render(camera, image.get());
+        renderer.Render(camera, image.get(), frame++);
         float endTime = glfwGetTime();
         float deltaTime = (endTime - startTime) * 1000;
 
@@ -101,6 +102,9 @@ int main() {
         ImGui::Text("DeltaTime: %f", deltaTime);
         ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
+        ImGui::Separator();
+        ImGui::DragInt("Max Bounces", &renderer.bounceLimit, 1, 1);
+        ImGui::DragInt("Rays Per Pixel", &renderer.raysPerPixel, 1, 1);
         ImGui::End();
 
         ImGui::Begin("Scene");
@@ -130,6 +134,8 @@ int main() {
             for (size_t i = 0; i < scene.materials.size(); i++) {
                 ImGui::PushID(("Material" + std::to_string(i)).c_str());
                 ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
+                ImGui::ColorEdit3("Emission Color", glm::value_ptr(scene.materials[i].emissionColor));
+                ImGui::DragFloat("Emission Strength", &scene.materials[i].emissionStrength);
                 if (ImGui::Button("Remove")) {
                     scene.materials.erase(scene.materials.begin() + i);
                 }
