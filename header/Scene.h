@@ -32,8 +32,14 @@ namespace Core {
         int materialIndex = 0;
     };
 
+    struct SkyLight {
+        glm::vec3 color = glm::vec3(0.6f, 0.7f, 0.9);
+        float strength = 1.0f;
+    };
+
     // TODO: Possibly create memory arenas to help performance of retrieving 
     struct Scene {
+        SkyLight skyLight;
         std::vector<DirectionalLight> directionalLights;
         std::vector<PointLight> pointLights;
         std::vector<Material> materials;    // First material is always pink so that any object that doesn't have a material has a default value

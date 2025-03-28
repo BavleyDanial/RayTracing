@@ -49,23 +49,27 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     Core::Scene scene;
-    scene.materials.push_back({glm::vec3(0.0f, 0.0f, 1.0f)});
     scene.materials.push_back({glm::vec3(0.0f, 1.0f, 0.0f)});
-    scene.directionalLights.push_back({ glm::vec3(-1.0f), glm::vec3(1.0f), 1.0f });
+    scene.materials.push_back({glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(204.0f/255.0f, 128.0f/255.0f, 51.0f/255.0f), 20.0f});
+    scene.materials.push_back({glm::vec3(204.0f/255.0f, 128.0f/255.0f, 51.0f/255.0f)});
 
     {
         Core::Sphere sphere;
+        sphere.position = glm::vec3(0.0f, -100.5f, 0.0f);
+        sphere.radius = 100.0f;
+        sphere.materialIndex = 0;
         scene.spheres.push_back(sphere);
     }
     {
         Core::Sphere sphere;
-        sphere.position = glm::vec3(0.0f, 1.0f, 0.0f);
+        sphere.position = glm::vec3(33.0f, 4.0f, -32.0f);
+        sphere.radius = 20.0f;
         sphere.materialIndex = 1;
         scene.spheres.push_back(sphere);
     }
     {
         Core::Sphere sphere;
-        sphere.position = {-1.0f, 0.0f, 0.0f };
+        sphere.materialIndex = 2;
         scene.spheres.push_back(sphere);
     }
 
@@ -73,7 +77,9 @@ int main() {
     std::unique_ptr<Core::Image> image = std::make_unique<Core::Image>(1920, 1080, 4);
     Core::Camera camera(glm::vec3(0, 0, 3), viewport, 45.0f, 0.1f, 1000.0f);
     RT::Renderer renderer(scene);
+    
     uint32_t frame = 1;
+    bool accumulate = false;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -88,10 +94,14 @@ int main() {
         if (width != image->width || height != image->height) {
             image.reset(new Core::Image(width, height, 4));
             camera.OnResize({image->width, image->height});
+            renderer.OnResize(image->width, image->height);
+            frame = 1;
         }
 
         float startTime = glfwGetTime();
-        renderer.Render(camera, image.get(), frame++);
+        renderer.Render(camera, image.get(), frame);
+        if (accumulate)
+            frame++;
         float endTime = glfwGetTime();
         float deltaTime = (endTime - startTime) * 1000;
 
@@ -104,10 +114,17 @@ int main() {
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
         ImGui::Separator();
         ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
-        ImGui::SliderInt("Rays Per Pixel", &renderer.raysPerPixel, 1, 30);
+        if (ImGui::Checkbox("Accumulate", &accumulate))
+            frame = 1;
+        if (ImGui::Button("Reset Accumulated Data"))
+            frame = 1;
         ImGui::End();
 
         ImGui::Begin("Scene");
+        if (ImGui::CollapsingHeader("SkyLight")) {
+            ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.skyLight.color));
+            ImGui::SliderFloat("Strength", &scene.skyLight.strength, 0.0f, 1.0f);
+        }
         if (ImGui::CollapsingHeader("Spheres")) {
             for (size_t i = 0; i < scene.spheres.size(); i++) {
                 ImGui::PushID(("Sphere" + std::to_string(i)).c_str());
@@ -152,6 +169,7 @@ int main() {
             ImGui::PopID();
         }
         ImGui::End();
+
 
         ImGui::Render();
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->width, image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());

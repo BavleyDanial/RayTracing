@@ -4,6 +4,7 @@
 
 #include <Image.h>
 #include <Camera.h>
+#include <memory>
 
 namespace RT {
 
@@ -17,10 +18,10 @@ namespace RT {
     public:
         Renderer(const Core::Scene& scene);
         void Render(const Core::Camera& camera, Core::Image* image, uint32_t frame);
+        void OnResize(uint32_t width, uint32_t height);
     public:
-        int bounceLimit = 1;
-        int raysPerPixel = 1;
-
+        int bounceLimit = 8;
+        
     private:
         struct HitInfo {
             glm::vec3 worldPosition;
@@ -32,7 +33,6 @@ namespace RT {
     private:
         glm::vec3 TraceRay(const Ray& ray);
         HitInfo RayIntersectionTest(const Ray& ray);
-        HitInfo FindClosestObj(const Ray& ray);
         glm::vec3 RayMiss();
 
         uint32_t NextRandom(uint32_t& state);
@@ -42,8 +42,10 @@ namespace RT {
 
     private:
         const Core::Scene& mScene;
-
-        uint32_t mRNG;
+        glm::vec3* mAccumulatedData = nullptr;
+        std::vector<uint32_t> mVerticalIter;
+        std::vector<uint32_t> mHorizontalIter;
+        inline static thread_local uint32_t mRNG = 1;
     };
 
 }

@@ -1,54 +1,74 @@
-#include "Scene.h"
-#include "glm/ext/scalar_constants.hpp"
 #include <Renderer.h>
+#include <algorithm>
+#include <execution>
 
 namespace RT {
 
     Renderer::Renderer(const Core::Scene& scene)
-        : mScene(scene), mRNG(1) {}
+        : mScene(scene) {}
 
     void Renderer::Render(const Core::Camera& camera, Core::Image* image, uint32_t frame) {
-        for (uint32_t y = 0; y < image->height; y++) {
-            for (uint32_t x = 0; x < image->width; x++) {
-                const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
-                Ray ray(camera.GetPosition(), rayDir);
-
-                glm::vec3 totalColor{0};
-                mRNG = x + y * image->width;
-                for (int i = 0; i < raysPerPixel; i++) {
-                    totalColor += TraceRay(ray);
-                }
-                totalColor /= (float)raysPerPixel;
-                totalColor = glm::clamp(totalColor, glm::vec3(0.0f), glm::vec3(1.0f));
-
-                int pixelIdx = image->comps * (y * image->width + x);
-                DrawPixel(image, pixelIdx, {totalColor, 1});
+        if (frame == 1) {
+            for (int i = 0; i < image->width * image->height; i++) {
+                mAccumulatedData[i] = glm::vec3(0);
             }
         }
+        
+        std::for_each(std::execution::par_unseq, mVerticalIter.begin(), mVerticalIter.end(), [&, this](uint32_t y) {
+            std::for_each(std::execution::par_unseq, mHorizontalIter.begin(), mHorizontalIter.end(), [&, this, y](uint32_t x) {
+                const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
+                Ray ray(camera.GetPosition(), rayDir);
+                uint32_t pixelIndex = x + y * image->width;
+                mRNG = pixelIndex + frame * 9941;
+                
+                glm::vec3 color = TraceRay(ray);
+                mAccumulatedData[pixelIndex] += color;
+                glm::vec3 accumColor = mAccumulatedData[pixelIndex];
+                accumColor /= (float)frame;
+                accumColor = glm::clamp(accumColor, glm::vec3(0.0f), glm::vec3(1.0f));
+
+                int pixelIdx = image->comps * (y * image->width + x);
+                DrawPixel(image, pixelIdx, {accumColor, 1});
+            });
+        });
+    }
+
+    void Renderer::OnResize(uint32_t width, uint32_t height) {
+        delete mAccumulatedData;
+        mAccumulatedData = new glm::vec3[width * height];
+        mVerticalIter.resize(height);
+        mHorizontalIter.resize(width);
+        
+        for (int i = 0; i < width * height; i++)
+            mAccumulatedData[i] = glm::vec3(0);
+        for (int i = 0; i < height; i++)
+            mVerticalIter[i] = i;
+        for (int i = 0; i < width; i++)
+            mHorizontalIter[i] = i;
     }
 
     glm::vec3 Renderer::TraceRay(const Ray& pixelRay) {
-        glm::vec3 rayColor{1};
+        glm::vec3 contribution{1};
         glm::vec3 incomingLight{0};
         Ray ray = pixelRay;
-
 
         for (int i = 0; i < bounceLimit; i++) {
             HitInfo hitInfo = RayIntersectionTest(ray);
             if (hitInfo.objIdx < 0) {
+                incomingLight += mScene.skyLight.color * mScene.skyLight.strength * contribution;
                 break;
             }
 
             const glm::vec3& hitNorm = hitInfo.surfaceNormal;
-            const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
-
             ray.org = hitInfo.worldPosition + hitNorm * 0.0001f;
             ray.dir = glm::normalize(hitNorm + RandomDirection(mRNG));
-
-            Core::Material mat = mScene.materials[closestSphere.materialIndex];
+            
+            const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
+            const Core::Material& mat = mScene.materials[closestSphere.materialIndex];
+            
             glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
-            incomingLight += emittedLight * rayColor;
-            rayColor *= mat.albedo;
+            incomingLight += emittedLight * contribution;
+            contribution *= mat.albedo;
         }
 
         return incomingLight;
