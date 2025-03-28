@@ -30,7 +30,7 @@ namespace RT {
         };
 
     private:
-        glm::vec3 TraceRay(Ray& ray);
+        glm::vec3 TraceRay(const Ray& ray);
         HitInfo RayIntersectionTest(const Ray& ray);
         HitInfo FindClosestObj(const Ray& ray);
         glm::vec3 RayMiss();
@@ -42,6 +42,7 @@ namespace RT {
 
     private:
         const Core::Scene& mScene;
+
         uint32_t mRNG;
     };
 

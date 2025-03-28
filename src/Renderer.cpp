@@ -13,8 +13,8 @@ namespace RT {
                 const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
 
-                mRNG = x + y * image->width;
                 glm::vec3 totalColor{0};
+                mRNG = x + y * image->width;
                 for (int i = 0; i < raysPerPixel; i++) {
                     totalColor += TraceRay(ray);
                 }
@@ -27,9 +27,11 @@ namespace RT {
         }
     }
 
-    glm::vec3 Renderer::TraceRay(Ray& ray) {
+    glm::vec3 Renderer::TraceRay(const Ray& pixelRay) {
         glm::vec3 rayColor{1};
         glm::vec3 incomingLight{0};
+        Ray ray = pixelRay;
+
 
         for (int i = 0; i < bounceLimit; i++) {
             HitInfo hitInfo = RayIntersectionTest(ray);
@@ -40,7 +42,7 @@ namespace RT {
             const glm::vec3& hitNorm = hitInfo.surfaceNormal;
             const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
 
-            ray.org = hitInfo.worldPosition + hitNorm * 0.001f;
+            ray.org = hitInfo.worldPosition + hitNorm * 0.0001f;
             ray.dir = glm::normalize(hitNorm + RandomDirection(mRNG));
 
             Core::Material mat = mScene.materials[closestSphere.materialIndex];
@@ -108,8 +110,7 @@ namespace RT {
     }
 
     float Renderer::RandomValue(uint32_t& state) {
-        state = NextRandom(state);
-        return (float)state / (float)4294967295.0; // 2^32 - 1
+        return (float)NextRandom(state) / (float)4294967295.0; // 2^32 - 1
 
     }
 
@@ -130,7 +131,7 @@ namespace RT {
         float x = RandomValueNormalDistribution(state);
         float y = RandomValueNormalDistribution(state);
         float z = RandomValueNormalDistribution(state);
-        return glm::normalize(glm::vec3(x, y, z));
+        return glm::vec3(x, y, z);
     }
 
 }

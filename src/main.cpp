@@ -103,8 +103,8 @@ int main() {
         ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
         ImGui::Separator();
-        ImGui::DragInt("Max Bounces", &renderer.bounceLimit, 1, 1);
-        ImGui::DragInt("Rays Per Pixel", &renderer.raysPerPixel, 1, 1);
+        ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
+        ImGui::SliderInt("Rays Per Pixel", &renderer.raysPerPixel, 1, 30);
         ImGui::End();
 
         ImGui::Begin("Scene");
@@ -135,7 +135,7 @@ int main() {
                 ImGui::PushID(("Material" + std::to_string(i)).c_str());
                 ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
                 ImGui::ColorEdit3("Emission Color", glm::value_ptr(scene.materials[i].emissionColor));
-                ImGui::DragFloat("Emission Strength", &scene.materials[i].emissionStrength);
+                ImGui::DragFloat("Emission Strength", &scene.materials[i].emissionStrength, 1);
                 if (ImGui::Button("Remove")) {
                     scene.materials.erase(scene.materials.begin() + i);
                 }
