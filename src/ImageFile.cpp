@@ -1,28 +1,30 @@
 #include <ImageFile.h>
-#include <fstream>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stbi/stb_image_write.h>
 
 namespace Core {
 
-    ImagePNG::ImagePNG(const Image& image) {
-        mImage = std::make_unique<Image>(image.width, image.height, image.comps);
-        mImage->pixels = image.pixels;
+    ImagePNG::ImagePNG(const Image* image) {
+        mImage = std::make_unique<Image>(image->width, image->height, image->comps);
+        mImage->pixels = image->pixels;
+        for (int i = 0; i < mImage->width * mImage->height; i++) {
+            mImage->pixels[i] = image->pixels[i];
+        }
     }
 
-    void ImagePNG::Load(const Image& image) {
+    void ImagePNG::Load(const Image* image) {
         mImage.reset();
-        mImage = std::make_unique<Image>(image.width, image.height, image.comps);
-        mImage->pixels = image.pixels;
+        mImage = std::make_unique<Image>(image->width, image->height, image->comps);
+        mImage->pixels = image->pixels;
+        for (int i = 0; i < mImage->width * mImage->height; i++) {
+            mImage->pixels[i] = image->pixels[i];
+        }
     }
 
     void ImagePNG::Save(const std::string& fileName) {
-        std::ofstream out_file(fileName);
-        out_file.close();
-
         stbi_flip_vertically_on_write(mFlipV);
-        stbi_write_png(fileName.data(), mImage->width,
+        stbi_write_png((fileName + ".png").data(), mImage->width,
                         mImage->height, mImage->comps,
                         mImage->pixels.data(), mImage->width*mImage->comps);
     }

@@ -4,6 +4,7 @@
 #include <Renderer.h>
 #include <Camera.h>
 #include <Image.h>
+#include <ImageFile.h>
 
 #include <imgui.h>
 #include <GLFW/glfw3.h>
@@ -15,13 +16,15 @@
 
 #define LOG(x, ...) printf(x, ##__VA_ARGS__) // Temporary, maybe I'll create a logging library for performance measurements
 
+#define IMGUI_UNLIMITED_FRAME_RATE
+
 int main() {
     if (!glfwInit()) {
         LOG("Failed to initialize GLFW\n");
         return -1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "RayTracing", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "RayTracing", nullptr, nullptr);
     if (!window) {
         LOG("Failed to create GLFW window\n");
         glfwTerminate();
@@ -29,7 +32,7 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+    //glfwSwapInterval(1);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -77,9 +80,11 @@ int main() {
     std::unique_ptr<Core::Image> image = std::make_unique<Core::Image>(1920, 1080, 4);
     Core::Camera camera(glm::vec3(0, 0, 3), viewport, 45.0f, 0.1f, 1000.0f);
     RT::Renderer renderer(scene);
-    
+
     uint32_t frame = 1;
     bool accumulate = false;
+    int framesAccToSave = 1000;
+    int pngImageCount = 0;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -102,16 +107,25 @@ int main() {
         renderer.Render(camera, image.get(), frame);
         if (accumulate)
             frame++;
+        if (frame == framesAccToSave) {
+            Core::ImagePNG png(image.get());
+            png.Save("resources/out/output" + std::to_string(pngImageCount));
+        }
+
         float endTime = glfwGetTime();
         float deltaTime = (endTime - startTime) * 1000;
+        int frameRate = 1 / (endTime - startTime);
 
         ImGui::Image(texture, ImVec2(image->width, image->height), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
 
         ImGui::Begin("RayTracing Options");
-        ImGui::Text("DeltaTime: %f", deltaTime);
+        ImGui::Text("Delta Time: %f", deltaTime);
+        ImGui::Text("Frame Rate: %i", frameRate);
         ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
+        ImGui::Text("Frames Accumulated: %i", static_cast<int>(frame));
+        ImGui::Text("Frames Accumulated to Save: %i", static_cast<int>(framesAccToSave));
         ImGui::Separator();
         ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
         if (ImGui::Checkbox("Accumulate", &accumulate))
@@ -153,6 +167,7 @@ int main() {
                 ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
                 ImGui::ColorEdit3("Emission Color", glm::value_ptr(scene.materials[i].emissionColor));
                 ImGui::DragFloat("Emission Strength", &scene.materials[i].emissionStrength, 1);
+                ImGui::SliderFloat("Shinniness", &scene.materials[i].shinniness, 0, 1);
                 if (ImGui::Button("Remove")) {
                     scene.materials.erase(scene.materials.begin() + i);
                 }

@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <execution>
 
+#include <glm/common.hpp>
+
 namespace RT {
 
     Renderer::Renderer(const Core::Scene& scene)
@@ -13,15 +15,24 @@ namespace RT {
                 mAccumulatedData[i] = glm::vec3(0);
             }
         }
-        
+
         std::for_each(std::execution::par_unseq, mVerticalIter.begin(), mVerticalIter.end(), [&, this](uint32_t y) {
             std::for_each(std::execution::par_unseq, mHorizontalIter.begin(), mHorizontalIter.end(), [&, this, y](uint32_t x) {
                 const auto& rayDir = camera.GetRayDirections()[x + y * image->width];
                 Ray ray(camera.GetPosition(), rayDir);
                 uint32_t pixelIndex = x + y * image->width;
                 mRNG = pixelIndex + frame * 9941;
-                
+
                 glm::vec3 color = TraceRay(ray);
+                // Convert from linear color space to gamma color space
+                if (color.r > 0) {
+                    color.r = std::sqrt(color.r);
+                } if (color.g > 0) {
+                    color.g = std::sqrt(color.g);
+                } if (color.b > 0) {
+                    color.b = std::sqrt(color.b);
+                }
+
                 mAccumulatedData[pixelIndex] += color;
                 glm::vec3 accumColor = mAccumulatedData[pixelIndex];
                 accumColor /= (float)frame;
@@ -38,7 +49,7 @@ namespace RT {
         mAccumulatedData = new glm::vec3[width * height];
         mVerticalIter.resize(height);
         mHorizontalIter.resize(width);
-        
+
         for (int i = 0; i < width * height; i++)
             mAccumulatedData[i] = glm::vec3(0);
         for (int i = 0; i < height; i++)
@@ -60,12 +71,16 @@ namespace RT {
             }
 
             const glm::vec3& hitNorm = hitInfo.surfaceNormal;
-            ray.org = hitInfo.worldPosition + hitNorm * 0.0001f;
-            ray.dir = glm::normalize(hitNorm + RandomDirection(mRNG));
-            
             const Core::Sphere& closestSphere = mScene.spheres[hitInfo.objIdx];
             const Core::Material& mat = mScene.materials[closestSphere.materialIndex];
-            
+
+            ray.org = hitInfo.worldPosition;
+            glm::vec3 diffDir = glm::normalize(hitNorm + RandomDirection(mRNG));
+            glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
+
+            ray.org += hitNorm * 0.0001f;
+            ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
+
             glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
             incomingLight += emittedLight * contribution;
             contribution *= mat.albedo;

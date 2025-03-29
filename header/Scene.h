@@ -21,6 +21,7 @@ namespace Core {
         glm::vec3 albedo{1.0f, 0, 1.0f};
         glm::vec3 emissionColor{1.0f};
         float emissionStrength = 0.0f;
+        float shinniness = 0.0f;
     };
 
     struct Sphere {
