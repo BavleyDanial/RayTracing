@@ -24,19 +24,15 @@ namespace RT {
                 mRNG = pixelIndex + frame * 9941;
 
                 glm::vec3 color = TraceRay(ray);
-                // Convert from linear color space to gamma color space
-                if (color.r > 0) {
-                    color.r = std::sqrt(color.r);
-                } if (color.g > 0) {
-                    color.g = std::sqrt(color.g);
-                } if (color.b > 0) {
-                    color.b = std::sqrt(color.b);
-                }
-
                 mAccumulatedData[pixelIndex] += color;
                 glm::vec3 accumColor = mAccumulatedData[pixelIndex];
                 accumColor /= (float)frame;
-                accumColor = glm::clamp(accumColor, glm::vec3(0.0f), glm::vec3(1.0f));
+
+                // Post-Processing
+                if (doToneMapping)
+                    accumColor = ApplyToneMapping(accumColor * exposure);
+                if (doGammaCorrection)
+                    accumColor = ApplyGammaCorrection(accumColor);
 
                 int pixelIdx = image->comps * (y * image->width + x);
                 DrawPixel(image, pixelIdx, {accumColor, 1});
@@ -76,10 +72,11 @@ namespace RT {
 
             ray.org = hitInfo.worldPosition;
             glm::vec3 diffDir = glm::normalize(hitNorm + RandomDirection(mRNG));
-            glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
+            //glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
 
             ray.org += hitNorm * 0.0001f;
-            ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
+            //ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
+            ray.dir = diffDir;
 
             glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
             incomingLight += emittedLight * contribution;
@@ -144,9 +141,32 @@ namespace RT {
         return { 0.0f, 0.0f, 0.0f };
     }
 
+    glm::vec3 Renderer::ApplyGammaCorrection(const glm::vec3& color) {
+        glm::vec3 co = color;
+        if (color.r > 0) {
+            co.r = glm::pow(color.r, 1/gamma);
+        } if (color.g > 0) {
+            co.g = glm::pow(color.g, 1/gamma);
+        } if (color.b > 0) {
+            co.b = glm::pow(color.b, 1/gamma);
+        }
+        return co;
+    }
+
+    glm::vec3 Renderer::ApplyToneMapping(const glm::vec3& x) {
+        // Credit: Uncharted 2 filmic tonemapping
+        float A = 0.15f;
+        float B = 0.50f;
+        float C = 0.10f;
+        float D = 0.20f;
+        float E = 0.02f;
+        float F = 0.30f;
+
+        return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
+    }
+
     float Renderer::RandomValue(uint32_t& state) {
         return (float)NextRandom(state) / (float)4294967295.0; // 2^32 - 1
-
     }
 
     uint32_t Renderer::NextRandom(uint32_t& state) {

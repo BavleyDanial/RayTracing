@@ -21,6 +21,10 @@ namespace RT {
         void OnResize(uint32_t width, uint32_t height);
     public:
         int bounceLimit = 8;
+        float gamma = 2.2f;
+        float exposure = 1.0f;
+        bool doGammaCorrection = true;
+        bool doToneMapping = false;
         
     private:
         struct HitInfo {
@@ -34,6 +38,9 @@ namespace RT {
         glm::vec3 TraceRay(const Ray& ray);
         HitInfo RayIntersectionTest(const Ray& ray);
         glm::vec3 RayMiss();
+
+        glm::vec3 ApplyGammaCorrection(const glm::vec3& color);
+        glm::vec3 ApplyToneMapping(const glm::vec3& x);
 
         uint32_t NextRandom(uint32_t& state);
         float RandomValue(uint32_t& state);

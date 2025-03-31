@@ -128,6 +128,10 @@ int main() {
         ImGui::Text("Frames Accumulated to Save: %i", static_cast<int>(framesAccToSave));
         ImGui::Separator();
         ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
+        ImGui::DragFloat("Gamma Correction", &renderer.gamma, 0.1);
+        ImGui::DragFloat("Exposure", &renderer.exposure, 0.1);
+        ImGui::Checkbox("Apply Gamma Correction", &renderer.doGammaCorrection);
+        ImGui::Checkbox("Apply ToneMapping", &renderer.doToneMapping);
         if (ImGui::Checkbox("Accumulate", &accumulate))
             frame = 1;
         if (ImGui::Button("Reset Accumulated Data"))
