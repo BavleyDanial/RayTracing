@@ -52,8 +52,8 @@ int main() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     Core::Scene scene;
-    scene.materials.push_back({glm::vec3(0.0f, 1.0f, 0.0f)});
-    scene.materials.push_back({glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(204.0f/255.0f, 128.0f/255.0f, 51.0f/255.0f), 20.0f});
+    scene.materials.push_back({glm::vec3(124.0f/255.0f, 252.0f/255.0f, 0.0f)});
+    scene.materials.push_back({glm::vec3(1.0f, 46.0f/255.0f, 0.0f), glm::vec3(0.0f, 191.0f/255.0f, 21.0f/255.0f), 20.0f});
     scene.materials.push_back({glm::vec3(204.0f/255.0f, 128.0f/255.0f, 51.0f/255.0f)});
 
     {
@@ -120,28 +120,35 @@ int main() {
         ImGui::End();
 
         ImGui::Begin("RayTracing Options");
+        
         ImGui::Text("Delta Time: %f", deltaTime);
         ImGui::Text("Frame Rate: %i", frameRate);
         ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
         ImGui::Text("Frames Accumulated: %i", static_cast<int>(frame));
         ImGui::Text("Frames Accumulated to Save: %i", static_cast<int>(framesAccToSave));
+        
         ImGui::Separator();
+        
         ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
         ImGui::DragFloat("Gamma Correction", &renderer.gamma, 0.1);
         ImGui::DragFloat("Exposure", &renderer.exposure, 0.1);
-        ImGui::Checkbox("Apply Gamma Correction", &renderer.doGammaCorrection);
-        ImGui::Checkbox("Apply ToneMapping", &renderer.doToneMapping);
+        
+        if (ImGui::Checkbox("Apply Gamma Correction", &renderer.doGammaCorrection))
+            frame = 1;
+        if (ImGui::Checkbox("Apply ToneMapping", &renderer.doToneMapping))
+            frame = 1;
         if (ImGui::Checkbox("Accumulate", &accumulate))
             frame = 1;
         if (ImGui::Button("Reset Accumulated Data"))
             frame = 1;
+        
         ImGui::End();
 
         ImGui::Begin("Scene");
         if (ImGui::CollapsingHeader("SkyLight")) {
             ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.skyLight.color));
-            ImGui::SliderFloat("Strength", &scene.skyLight.strength, 0.0f, 1.0f);
+            ImGui::DragFloat("Strength", &scene.skyLight.strength, 0.1f);
         }
         if (ImGui::CollapsingHeader("Spheres")) {
             for (size_t i = 0; i < scene.spheres.size(); i++) {

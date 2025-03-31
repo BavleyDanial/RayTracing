@@ -24,7 +24,7 @@ namespace RT {
         float gamma = 2.2f;
         float exposure = 1.0f;
         bool doGammaCorrection = true;
-        bool doToneMapping = false;
+        bool doToneMapping = true;
         
     private:
         struct HitInfo {

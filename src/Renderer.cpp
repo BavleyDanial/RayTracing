@@ -33,6 +33,7 @@ namespace RT {
                     accumColor = ApplyToneMapping(accumColor * exposure);
                 if (doGammaCorrection)
                     accumColor = ApplyGammaCorrection(accumColor);
+                accumColor = glm::clamp(accumColor, glm::vec3(0), glm::vec3(1.0f));
 
                 int pixelIdx = image->comps * (y * image->width + x);
                 DrawPixel(image, pixelIdx, {accumColor, 1});
@@ -72,11 +73,10 @@ namespace RT {
 
             ray.org = hitInfo.worldPosition;
             glm::vec3 diffDir = glm::normalize(hitNorm + RandomDirection(mRNG));
-            //glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
+            glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
 
             ray.org += hitNorm * 0.0001f;
-            //ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
-            ray.dir = diffDir;
+            ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
 
             glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
             incomingLight += emittedLight * contribution;
