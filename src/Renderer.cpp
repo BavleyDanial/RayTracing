@@ -76,7 +76,7 @@ namespace RT {
             glm::vec3 specDir = ray.dir - 2.0f * hitNorm * glm::dot(ray.dir, hitNorm);
 
             ray.org += hitNorm * 0.0001f;
-            ray.dir = glm::mix(diffDir, specDir, mat.shinniness);
+            ray.dir = glm::mix(diffDir, specDir, mat.shininess);
 
             glm::vec3 emittedLight = mat.emissionColor * mat.emissionStrength;
             incomingLight += emittedLight * contribution;

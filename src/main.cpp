@@ -6,13 +6,22 @@
 #include <Image.h>
 #include <ImageFile.h>
 
+#include <glad/glad.h>
 #include <imgui.h>
+
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <VertexBuffer.h>
+#include <IndexBuffer.h>
+#include <VertexArray.h>
+#include <Shader.h>
+#include <Texture2D.h>
 
 #define LOG(x, ...) printf(x, ##__VA_ARGS__) // Temporary, maybe I'll create a logging library for performance measurements
 
@@ -24,32 +33,41 @@ int main() {
         return -1;
     }
 
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     GLFWwindow* window = glfwCreateWindow(1280, 720, "RayTracing", nullptr, nullptr);
     if (!window) {
         LOG("Failed to create GLFW window\n");
         glfwTerminate();
         return -1;
     }
-
+    
     glfwMakeContextCurrent(window);
     //glfwSwapInterval(1);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        LOG("Failed to load GLAD\n");
+        glfwTerminate();
+        return -1;
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
     ImGui::StyleColorsDark();
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    GLuint renderTexture;
+    glGenTextures(1, &renderTexture);
+    glBindTexture(GL_TEXTURE_2D, renderTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    RT::Shader RTShader = RT::Shader("resources/shaders/raytracing.glsl");
 
     Core::Scene scene;
     scene.materials.push_back({glm::vec3(124.0f/255.0f, 252.0f/255.0f, 0.0f)});
@@ -83,8 +101,9 @@ int main() {
 
     uint32_t frame = 1;
     bool accumulate = false;
-    int framesAccToSave = 1000;
-    int pngImageCount = 0;
+    uint32_t framesAccToSave = 1000;
+    uint32_t pngImageCount = 0;
+    
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -94,8 +113,8 @@ int main() {
         ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
         ImGui::Begin("RayTracing Viewport");
-        float width = ImGui::GetContentRegionAvail().x;
-        float height = ImGui::GetContentRegionAvail().y;
+        uint32_t width = static_cast<uint32_t>(ImGui::GetContentRegionAvail().x);
+        uint32_t height = static_cast<uint32_t>(ImGui::GetContentRegionAvail().y);
         if (width != image->width || height != image->height) {
             image.reset(new Core::Image(width, height, 4));
             camera.OnResize({image->width, image->height});
@@ -103,7 +122,7 @@ int main() {
             frame = 1;
         }
 
-        float startTime = glfwGetTime();
+        float startTime = static_cast<float>(glfwGetTime());
         renderer.Render(camera, image.get(), frame);
         if (accumulate)
             frame++;
@@ -112,18 +131,18 @@ int main() {
             png.Save("resources/out/output" + std::to_string(pngImageCount));
         }
 
-        float endTime = glfwGetTime();
+        float endTime = static_cast<float>(glfwGetTime());
         float deltaTime = (endTime - startTime) * 1000;
-        int frameRate = 1 / (endTime - startTime);
+        int frameRate = static_cast<int>(1.0f / (endTime - startTime));
 
-        ImGui::Image(texture, ImVec2(image->width, image->height), ImVec2(0, 1), ImVec2(1, 0));
+        ImGui::Image(renderTexture, ImVec2(static_cast<float>(image->width), static_cast<float>(image->height)), ImVec2(0, 1), ImVec2(1, 0));
         ImGui::End();
 
         ImGui::Begin("RayTracing Options");
         
         ImGui::Text("Delta Time: %f", deltaTime);
         ImGui::Text("Frame Rate: %i", frameRate);
-        ImGui::Text("Render Resolution: %ix%i", image->width, image->height);
+        ImGui::Text("Render Resolution: %ix%i", static_cast<int>(image->width), static_cast<int>(image->height));
         ImGui::Text("Spheres Count: %i", static_cast<int>(scene.spheres.size()));
         ImGui::Text("Frames Accumulated: %i", static_cast<int>(frame));
         ImGui::Text("Frames Accumulated to Save: %i", static_cast<int>(framesAccToSave));
@@ -131,8 +150,8 @@ int main() {
         ImGui::Separator();
         
         ImGui::SliderInt("Max Bounces", &renderer.bounceLimit, 1, 8);
-        ImGui::DragFloat("Gamma Correction", &renderer.gamma, 0.1);
-        ImGui::DragFloat("Exposure", &renderer.exposure, 0.1);
+        ImGui::DragFloat("Gamma Correction", &renderer.gamma, 0.1f);
+        ImGui::DragFloat("Exposure", &renderer.exposure, 0.1f);
         
         if (ImGui::Checkbox("Apply Gamma Correction", &renderer.doGammaCorrection))
             frame = 1;
@@ -157,7 +176,7 @@ int main() {
                 ImGui::DragFloat("Scale", &scene.spheres[i].radius, 0.1f);
                 ImGui::InputInt("Material ID", &scene.spheres[i].materialIndex);
                 if (ImGui::Button("Remove")) {
-                    scene.spheres.erase(scene.spheres.begin() + i);
+                    scene.spheres.erase(scene.spheres.begin() + static_cast<uint32_t>(i));
                 }
                 if (i != scene.spheres.size() - 1) {
                     ImGui::Separator();
@@ -178,9 +197,9 @@ int main() {
                 ImGui::ColorEdit3("Albedo", glm::value_ptr(scene.materials[i].albedo));
                 ImGui::ColorEdit3("Emission Color", glm::value_ptr(scene.materials[i].emissionColor));
                 ImGui::DragFloat("Emission Strength", &scene.materials[i].emissionStrength, 1);
-                ImGui::SliderFloat("Shinniness", &scene.materials[i].shinniness, 0, 1);
+                ImGui::SliderFloat("Shininess", &scene.materials[i].shininess, 0, 1);
                 if (ImGui::Button("Remove")) {
-                    scene.materials.erase(scene.materials.begin() + i);
+                    scene.materials.erase(scene.materials.begin() + static_cast<uint32_t>(i));
                 }
                 if (i != scene.materials.size() - 1) {
                     ImGui::Separator();
@@ -198,8 +217,8 @@ int main() {
 
 
         ImGui::Render();
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->width, image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
-        glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, static_cast<int>(image->width), static_cast<int>(image->height), 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels.data());
+        glViewport(0, 0, static_cast<int>(io.DisplaySize.x), static_cast<int>(io.DisplaySize.y));
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT);
 

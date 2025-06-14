@@ -31,6 +31,8 @@ elseif(MINGW)
 endif()
 
 file(GLOB_RECURSE SOURCE "${CMAKE_SOURCE_DIR}/src/**.cpp")
+file(GLOB_RECURSE GLAD_SRC "${CMAKE_SOURCE_DIR}/vendor/glad/src/**.c")
+
 file(GLOB_RECURSE HEADER_SOURCE "${CMAKE_SOURCE_DIR}/header/**.h")
 set(HEADER "${CMAKE_SOURCE_DIR}/header/")
 
@@ -38,6 +40,7 @@ set(GLM_HEADER "${CMAKE_SOURCE_DIR}/vendor/glm/")
 set(STB_HEADER "${CMAKE_SOURCE_DIR}/vendor/stb/")
 set(GLFW_HEADER "${CMAKE_SOURCE_DIR}/vendor/glfw/include/")
 set(IMGUI_HEADER "${CMAKE_SOURCE_DIR}/vendor/imgui/")
+set(GLAD_HEADER "${CMAKE_SOURCE_DIR}/vendor/glad/include/")
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/glfw/")
 add_subdirectory("${CMAKE_SOURCE_DIR}/vendor/imgui/")
@@ -52,7 +55,7 @@ target_link_libraries(${BIN_NAME} OpenGL::GL)
 target_link_libraries(${BIN_NAME} imgui)
 target_link_libraries(${BIN_NANE} Threads::Threads)
 
-target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLM_HEADER}" "${STB_HEADER}" "${GLFW_HEADER}" "${IMGUI_HEADER}")
+target_include_directories(${BIN_NAME} PUBLIC "${HEADER}" "${GLAD_HEADER}" "${GLM_HEADER}" "${STB_HEADER}" "${GLFW_HEADER}" "${IMGUI_HEADER}")
 set_target_properties(${BIN_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${OutputDir}"
 )
